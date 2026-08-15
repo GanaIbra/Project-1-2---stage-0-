@@ -1,0 +1,14 @@
+conda activate base
+conda create -n funtools
+conda activate funtools
+sudo apt-get update
+sudo apt-get install figlet
+figlet Gana
+conda install -c bioconda bwa
+conda install -c bioconda blast
+conda install -c bioconda samtools
+conda install -c bioconda bedtools
+conda install -c bioconda spades
+conda install -c bioconda bcftools
+conda install -c bioconda fastp
+conda install -c bioconda multiqc
