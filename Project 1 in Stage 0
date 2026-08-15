@@ -1,0 +1,22 @@
+echo "gana"
+mkdir gana
+mkdir biocomputing && cd biocomputing
+wget https://raw.githubusercontent.com/HackBio-Internship/Bash_NGS_Starters/refs/heads/main/biocomp_samp/wildtype.fna
+wget https://raw.githubusercontent.com/HackBio-Internship/Bash_NGS_Starters/refs/heads/main/biocomp_samp/wildtype.gbk
+wget https://raw.githubusercontent.com/HackBio-Internship/Bash_NGS_Starters/refs/heads/main/biocomp_samp/wildtype.gbk -O wildtype_duplicate.gbk
+mv wildtype.fna ~/gana/
+rm wildtype_duplicate.gbk
+if grep -i "tatatata" ~/gana/wildtype.fna; then
+    echo "Mutant"
+    grep -i "tatatata" ~/gana/wildtype.fna > mutant_matches.txt
+else
+    echo "Wild type"
+fi
+tail -n +2 wildtype.gbk | wc -l
+grep "^LOCUS" wildtype.gbk
+grep "^ SOURCE" wildtype.gbk
+grep '/gene=' wildtype.gbk
+clear
+history
+ls -lh ~/gana
+ls -lh ~/biocomputing
