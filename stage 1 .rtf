@@ -1,0 +1,606 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2870
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 \
+\
+import pandas as pd\
+import numpy as np\
+import seaborn as sns\
+import matplotlib.pyplot as plt\
+from IPython.display import display\
+\
+\
+\
+\
+df = pd.read_excel("GDSC.xlsx")\
+\
+# Remove accidental spaces from column names\
+df.columns = df.columns.str.strip()\
+\
+print("Dataset shape:")\
+print(df.shape)\
+\
+print("\\nFirst 5 rows:")\
+display(df.head())\
+\
+print("\\nColumns:")\
+print(df.columns.tolist())\
+\
+print("\\nData types:")\
+print(df.dtypes)\
+\
+\
+\
+\
+missing = pd.DataFrame(\{\
+    "Missing Values": df.isnull().sum(),\
+    "Missing Percentage": (df.isnull().sum() / len(df)) * 100\
+\})\
+\
+missing = missing.sort_values(\
+    by="Missing Percentage",\
+    ascending=False\
+)\
+\
+print("\\nMissing values:")\
+display(missing)\
+\
+\
+\
+\
+print("Exact duplicate rows:")\
+print(df.duplicated().sum())\
+\
+print("\\nRepeated cell-line/drug combinations:")\
+print(\
+    df.duplicated(\
+        subset=["COSMIC_ID", "DRUG_ID"]\
+    ).sum()\
+)\
+\
+\
+\
+\
+unique_values = pd.DataFrame(\{\
+    "Column": df.columns,\
+    "Unique Values": [\
+        df[column].nunique()\
+        for column in df.columns\
+    ]\
+\})\
+\
+display(unique_values)\
+\
+\
+\
+\
+print("\\nNumerical summary:")\
+display(\
+    df[\
+        ["LN_IC50", "AUC", "Z_SCORE"]\
+    ].describe()\
+)\
+\
+\
+\
+\
+data = df.copy()\
+\
+\
+text_columns = data.select_dtypes(include="object").columns\
+\
+for column in text_columns:\
+    data[column] = data[column].str.strip()\
+\
+\
+\
+data = data.dropna(\
+    subset=[\
+        "DRUG_NAME",\
+        "CELL_LINE_NAME",\
+        "LN_IC50",\
+        "AUC"\
+    ]\
+)\
+\
+print("Shape after cleaning:")\
+print(data.shape)\
+\
+\
+\
+\
+drug_summary = (\
+    data.groupby("DRUG_NAME")\
+    .agg(\
+        Number_of_Cell_Lines=("LN_IC50", "count"),\
+        Mean_LN_IC50=("LN_IC50", "mean"),\
+        Median_LN_IC50=("LN_IC50", "median"),\
+        SD_LN_IC50=("LN_IC50", "std"),\
+        Mean_AUC=("AUC", "mean"),\
+        Median_AUC=("AUC", "median")\
+    )\
+    .reset_index()\
+)\
+\
+\
+# Only keep drugs tested on at least 20 cell lines\
+drug_summary_filtered = drug_summary[\
+    drug_summary["Number_of_Cell_Lines"] >= 20\
+].copy()\
+\
+\
+\
+most_effective = (\
+    drug_summary_filtered\
+    .sort_values("Median_LN_IC50")\
+    .head(10)\
+)\
+\
+print("\\n10 drugs with the lowest median LN_IC50:")\
+display(most_effective)\
+\
+\
+\
+least_effective = (\
+    drug_summary_filtered\
+    .sort_values(\
+        "Median_LN_IC50",\
+        ascending=False\
+    )\
+    .head(10)\
+)\
+\
+print("\\n10 drugs with the highest median LN_IC50:")\
+display(least_effective)\
+\
+\
+\
+\
+most_variable = (\
+    drug_summary_filtered\
+    .sort_values(\
+        "SD_LN_IC50",\
+        ascending=False\
+    )\
+    .head(10)\
+)\
+\
+print("\\nDrugs with the most variable responses:")\
+display(most_variable)\
+\
+\
+\
+\
+plt.figure(figsize=(9, 5))\
+\
+sns.histplot(\
+    data=data,\
+    x="LN_IC50",\
+    bins=40,\
+    kde=True\
+)\
+\
+plt.title("Distribution of Drug Sensitivity")\
+plt.xlabel("LN_IC50")\
+plt.ylabel("Count")\
+\
+plt.show()\
+\
+\
+\
+plt.figure(figsize=(9, 5))\
+\
+sns.histplot(\
+    data=data,\
+    x="AUC",\
+    bins=40,\
+    kde=True\
+)\
+\
+plt.title("Distribution of AUC")\
+plt.xlabel("AUC")\
+plt.ylabel("Count")\
+\
+plt.show()\
+\
+\
+\
+\
+top_drugs = (\
+    data["DRUG_NAME"]\
+    .value_counts()\
+    .head(10)\
+    .index\
+)\
+\
+drug_plot = data[\
+    data["DRUG_NAME"].isin(top_drugs)\
+]\
+\
+plt.figure(figsize=(14, 6))\
+\
+sns.boxplot(\
+    data=drug_plot,\
+    x="DRUG_NAME",\
+    y="LN_IC50",\
+    showfliers=False\
+)\
+\
+plt.title("Drug Sensitivity Across Commonly Tested Drugs")\
+plt.xlabel("Drug")\
+plt.ylabel("LN_IC50")\
+\
+plt.xticks(rotation=45)\
+\
+plt.show()\
+\
+\
+\
+\
+cancer_drug = (\
+    data.groupby(\
+        ["TCGA_DESC", "DRUG_NAME"]\
+    )\
+    .agg(\
+        Median_LN_IC50=("LN_IC50", "median"),\
+        Mean_LN_IC50=("LN_IC50", "mean"),\
+        Number_of_Cell_Lines=("LN_IC50", "count")\
+    )\
+    .reset_index()\
+)\
+\
+\
+\
+\
+cancer_drug_filtered = cancer_drug[\
+    cancer_drug["Number_of_Cell_Lines"] >= 5\
+].copy()\
+\
+\
+\
+\
+best_drug_by_cancer = (\
+    cancer_drug_filtered\
+    .sort_values("Median_LN_IC50")\
+    .groupby("TCGA_DESC")\
+    .first()\
+    .reset_index()\
+)\
+\
+print("\\nDrug with lowest median LN_IC50 for each cancer type:")\
+display(\
+    best_drug_by_cancer[\
+        [\
+            "TCGA_DESC",\
+            "DRUG_NAME",\
+            "Median_LN_IC50",\
+            "Number_of_Cell_Lines"\
+        ]\
+    ].head(30)\
+)\
+\
+\
+\
+\
+best_cell_line_rows = (\
+    data.groupby("CELL_LINE_NAME")["LN_IC50"]\
+    .idxmin()\
+)\
+\
+best_drug_by_cell_line = data.loc[\
+    best_cell_line_rows,\
+    [\
+        "CELL_LINE_NAME",\
+        "TCGA_DESC",\
+        "DRUG_NAME",\
+        "LN_IC50"\
+    ]\
+]\
+\
+best_drug_by_cell_line = (\
+    best_drug_by_cell_line\
+    .sort_values("LN_IC50")\
+)\
+\
+print("\\nBest response for each cell line:")\
+display(best_drug_by_cell_line.head(30))\
+\
+\
+\
+\
+top_cancer_types = (\
+    data["TCGA_DESC"]\
+    .value_counts()\
+    .head(10)\
+    .index\
+)\
+\
+cancer_plot = data[\
+    data["TCGA_DESC"].isin(top_cancer_types)\
+]\
+\
+plt.figure(figsize=(14, 6))\
+\
+sns.boxplot(\
+    data=cancer_plot,\
+    x="TCGA_DESC",\
+    y="LN_IC50",\
+    showfliers=False\
+)\
+\
+plt.title("Drug Sensitivity Across Cancer Types")\
+plt.xlabel("Cancer Type")\
+plt.ylabel("LN_IC50")\
+\
+plt.xticks(rotation=45)\
+\
+plt.show()\
+\
+\
+\
+\
+top_drugs_heatmap = (\
+    data["DRUG_NAME"]\
+    .value_counts()\
+    .head(12)\
+    .index\
+)\
+\
+top_cancers_heatmap = (\
+    data["TCGA_DESC"]\
+    .value_counts()\
+    .head(12)\
+    .index\
+)\
+\
+heatmap_data = data[\
+    (data["DRUG_NAME"].isin(top_drugs_heatmap)) &\
+    (data["TCGA_DESC"].isin(top_cancers_heatmap))\
+]\
+\
+\
+heatmap_table = heatmap_data.pivot_table(\
+    index="TCGA_DESC",\
+    columns="DRUG_NAME",\
+    values="LN_IC50",\
+    aggfunc="median"\
+)\
+\
+\
+plt.figure(figsize=(15, 8))\
+\
+sns.heatmap(\
+    heatmap_table,\
+    annot=True,\
+    fmt=".1f"\
+)\
+\
+plt.title(\
+    "Median Drug Sensitivity Across Cancer Types"\
+)\
+\
+plt.xlabel("Drug")\
+plt.ylabel("Cancer Type")\
+\
+plt.show()\
+\
+\
+# ============================================================\
+\
+omics_columns = [\
+    "CNA",\
+    "Gene Expression",\
+    "Methylation"\
+]\
+\
+\
+\
+\
+for column in omics_columns:\
+\
+    print("\\n", column)\
+\
+    print(\
+        data[column]\
+        .value_counts(dropna=False)\
+    )\
+\
+\
+\
+\
+for column in omics_columns:\
+\
+    print("\\nLN_IC50 according to", column)\
+\
+    omics_summary = (\
+        data.groupby(column)["LN_IC50"]\
+        .agg(\
+            Count="count",\
+            Mean="mean",\
+            Median="median",\
+            Standard_Deviation="std"\
+        )\
+    )\
+\
+    display(omics_summary)\
+\
+\
+    plt.figure(figsize=(6, 5))\
+\
+    sns.boxplot(\
+        data=data,\
+        x=column,\
+        y="LN_IC50",\
+        showfliers=False\
+    )\
+\
+    plt.title(\
+        "LN_IC50 by " + column + " Data Availability"\
+    )\
+\
+    plt.ylabel("LN_IC50")\
+\
+    plt.show()\
+\
+\
+\
+\
+top5_cancers = (\
+    data["TCGA_DESC"]\
+    .value_counts()\
+    .head(5)\
+    .index\
+)\
+\
+scatter_data = data[\
+    data["TCGA_DESC"].isin(top5_cancers)\
+]\
+\
+\
+\
+\
+if len(scatter_data) > 5000:\
+    scatter_data = scatter_data.sample(\
+        5000,\
+        random_state=42\
+    )\
+\
+\
+plt.figure(figsize=(9, 6))\
+\
+sns.scatterplot(\
+    data=scatter_data,\
+    x="LN_IC50",\
+    y="AUC",\
+    hue="TCGA_DESC",\
+    alpha=0.6\
+)\
+\
+plt.title(\
+    "Relationship Between LN_IC50 and AUC"\
+)\
+\
+plt.xlabel("LN_IC50")\
+plt.ylabel("AUC")\
+\
+plt.legend(\
+    title="Cancer Type",\
+    bbox_to_anchor=(1.05, 1)\
+)\
+\
+plt.show()\
+\
+numeric_response = data[\
+    [\
+        "LN_IC50",\
+        "AUC",\
+        "Z_SCORE"\
+    ]\
+]\
+\
+correlation = numeric_response.corr()\
+\
+print("\\nCorrelation matrix:")\
+\
+display(correlation)\
+\
+\
+\
+\
+plt.figure(figsize=(7, 5))\
+\
+sns.heatmap(\
+    correlation,\
+    annot=True,\
+    vmin=-1,\
+    vmax=1\
+)\
+\
+plt.title(\
+    "Correlation Between Drug Response Measurements"\
+)\
+\
+plt.show()\
+\
+\
+\
+\
+pathway_summary = (\
+    data.groupby("TARGET_PATHWAY")\
+    .agg(\
+        Median_LN_IC50=("LN_IC50", "median"),\
+        Mean_LN_IC50=("LN_IC50", "mean"),\
+        Number_of_Observations=("LN_IC50", "count")\
+    )\
+    .reset_index()\
+    .sort_values("Median_LN_IC50")\
+)\
+\
+print("\\nDrug sensitivity by target pathway:")\
+\
+display(pathway_summary.head(20))\
+\
+\
+\
+\
+top_pathways = (\
+    data["TARGET_PATHWAY"]\
+    .value_counts()\
+    .head(10)\
+    .index\
+)\
+\
+pathway_plot = data[\
+    data["TARGET_PATHWAY"].isin(top_pathways)\
+]\
+\
+plt.figure(figsize=(15, 6))\
+\
+sns.boxplot(\
+    data=pathway_plot,\
+    x="TARGET_PATHWAY",\
+    y="LN_IC50",\
+    showfliers=False\
+)\
+\
+plt.title(\
+    "Drug Sensitivity Across Target Pathways"\
+)\
+\
+plt.xlabel("Target Pathway")\
+plt.ylabel("LN_IC50")\
+\
+plt.xticks(\
+    rotation=60,\
+    ha="right"\
+)\
+\
+plt.show() \
+\
+Romidepsin showed the greatest overall drug sensitivity, with the lowest median LN_IC50 of approximately \uc0\u8722 5.32, followed by Bortezomib and Sepantronium bromide.\
+\
+Ascorbate (vitamin C) showed the lowest overall sensitivity, with the highest median LN_IC50 of approximately 10.45.\
+\
+Gemcitabine showed the greatest variability in drug response, suggesting that sensitivity to Gemcitabine differs considerably between cancer cell lines.\
+\
+Drug sensitivity differed considerably between cancer types. For example, LCML cell lines showed particularly high sensitivity to Dasatinib, while ALL cell lines showed strong sensitivity to Daporinad. These findings suggest that drug response is dependent on cancer type rather than being uniform across all cell lines.\
+\
+A strong positive correlation was observed between LN_IC50 and AUC (r \uc0\u8776  0.76), showing that the two measurements capture related aspects of drug response. Moderate positive correlations were observed between LN_IC50 and Z-score and between AUC and Z-score.\
+\
+\
+\
+The distribution plots demonstrate that drug sensitivity varies substantially across the dataset, indicating a wide range of responses among cancer cell lines.\
+\
+The boxplots show clear differences in median drug sensitivity as well as differences in response variability between drugs. Some drugs show relatively consistent responses, whereas others display a wide range of LN_IC50 values.\
+\
+The distributions differ between cancer types, indicating that cancer origin may be associated with differences in drug sensitivity.\
+\
+The heatmap reveals distinct drug-response patterns across cancer types, with some cancer\'96drug combinations showing substantially lower LN_IC50 values than others.\
+\
+The scatter plot shows a clear positive relationship between LN_IC50 and AUC, which is supported by a Pearson correlation of approximately 0.76.\
+\
+}
